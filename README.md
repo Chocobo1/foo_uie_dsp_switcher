@@ -12,8 +12,8 @@
 * Or right-click on menu bar: ![add_menu_screenshot](https://raw.githubusercontent.com/Chocobo1/foo_uie_dsp_switcher/master/pics/add_menu.png)
 * If the list goes wrong after configuring DSP in Preferences, try restarting foobar2000. There is no easy way to retrive DSP preset names in the current foobar2000 SDK.
 
-### Compile
-* Visual Studio 2013 Express [(compatibility notice)](http://www.hydrogenaud.io/forums/index.php?showtopic=108411)
+### Compiler
+* Visual Studio 2015 Express
 
 ### License
 See [LICENSE](https://github.com/Chocobo1/foo_uie_dsp_switcher/blob/master/LICENSE) file

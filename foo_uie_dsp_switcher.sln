@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Express 2013 for Windows Desktop
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio Express 14 for Windows Desktop
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "foo_uie_dsp_switcher", "src\foo_uie_dsp_switcher.vcxproj", "{B027E808-B69B-48C1-9F5B-327D5ED04B81}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -13,19 +13,19 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "foo_uie_dsp_switcher", "src
 		{93EC0EDE-01CD-4FB0-B8E8-4F2A027E026E} = {93EC0EDE-01CD-4FB0-B8E8-4F2A027E026E}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pfc", "lib\columns_ui_sdk\foobar2000\vc12\pfc.vcxproj", "{EBFFFB4E-261D-44D3-B89C-957B31A0BF9C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pfc", "lib\columns_ui_sdk\foobar2000\vc14\pfc.vcxproj", "{EBFFFB4E-261D-44D3-B89C-957B31A0BF9C}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "columns_ui_sdk", "lib\columns_ui_sdk\foobar2000\vc12\columns_ui-sdk.vcxproj", "{93EC0EDE-01CD-4FB0-B8E8-4F2A027E026E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "columns_ui_sdk", "lib\columns_ui_sdk\foobar2000\vc14\columns_ui-sdk.vcxproj", "{93EC0EDE-01CD-4FB0-B8E8-4F2A027E026E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "foobar2000_SDK", "lib\columns_ui_sdk\foobar2000\vc12\foobar2000_SDK.vcxproj", "{E8091321-D79D-4575-86EF-064EA1A4A20D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "foobar2000_SDK", "lib\columns_ui_sdk\foobar2000\vc14\foobar2000_SDK.vcxproj", "{E8091321-D79D-4575-86EF-064EA1A4A20D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "foobar2000_sdk_helpers", "lib\columns_ui_sdk\foobar2000\vc12\foobar2000_sdk_helpers.vcxproj", "{EE47764E-A202-4F85-A767-ABDAB4AFF35F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "foobar2000_sdk_helpers", "lib\columns_ui_sdk\foobar2000\vc14\foobar2000_sdk_helpers.vcxproj", "{EE47764E-A202-4F85-A767-ABDAB4AFF35F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ui_helpers", "lib\columns_ui_sdk\foobar2000\vc12\ui_helpers.vcxproj", "{A8C4298D-00F5-46F7-91BA-F503FD581590}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ui_helpers", "lib\columns_ui_sdk\foobar2000\vc14\ui_helpers.vcxproj", "{A8C4298D-00F5-46F7-91BA-F503FD581590}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mmh", "lib\columns_ui_sdk\foobar2000\vc12\mmh.vcxproj", "{C90A19C3-554D-4037-B4D3-BD12C1F1AD86}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mmh", "lib\columns_ui_sdk\foobar2000\vc14\mmh.vcxproj", "{C90A19C3-554D-4037-B4D3-BD12C1F1AD86}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "foobar2000_component_client", "lib\columns_ui_sdk\foobar2000\vc12\foobar2000_component_client.vcxproj", "{71AD2674-065B-48F5-B8B0-E1F9D3892081}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "foobar2000_component_client", "lib\columns_ui_sdk\foobar2000\vc14\foobar2000_component_client.vcxproj", "{71AD2674-065B-48F5-B8B0-E1F9D3892081}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
