@@ -40,9 +40,10 @@ DECLARE_COMPONENT_VERSION
 
 	PLUGIN_NAME"\n"
 	"Compiled on: "__DATE__"\n"
+	"Linked Columns UI version: " UI_EXTENSION_VERSION "\n"
+	"\n"
 	"https://github.com/Chocobo1/foo_uie_dsp_switcher\n"
 	"This plugin is released under BSD 3-Clause license\n"
-	"\n"
 	"Mike Tzou (Chocobo1)\n"
 );
 
