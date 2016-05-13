@@ -30,12 +30,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "../lib/columns_ui_sdk/foobar2000/SDK/foobar2000.h"
-#include "../lib/columns_ui_sdk/foobar2000/columns_ui-sdk/columns_ui.h"
-#include "../lib/columns_ui_sdk/foobar2000/columns_ui-sdk/ui_extension.h"
+#include "../lib/columns_ui/foobar2000/SDK/foobar2000.h"
+#include "../lib/columns_ui/columns_ui-sdk/columns_ui.h"
+#include "../lib/columns_ui/columns_ui-sdk/ui_extension.h"
 
 #include <Usp10.h>
-#include "../lib/columns_ui_sdk/foobar2000/ui_helpers/text_drawing.h"
+#include "../lib/columns_ui/ui_helpers/text_drawing.h"
 
 
 #define CONSOLE_HEADER "foo_uie_dsp_switcher: "
