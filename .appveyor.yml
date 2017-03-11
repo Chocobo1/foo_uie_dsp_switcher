@@ -32,7 +32,7 @@ environment:
   REPO_DIR: &REPO_DIR c:\project  # directory created by appveyor
 
   SOL_FILE: foo_uie_dsp_switcher.sln
-  MSBUILD_CMD: /m /p:Configuration=Release
+  MSBUILD_CMD: /maxcpucount /property:Configuration=Release,Platform=Win32,PlatformToolset=v141,WindowsTargetPlatformVersion=10.0.14393.0
 
 # clone directory
 clone_folder: *REPO_DIR
