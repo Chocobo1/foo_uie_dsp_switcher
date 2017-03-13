@@ -59,7 +59,7 @@ after_build:
   - 'cd "%REPO_DIR%"'
   - 'copy "%REPO_DIR%\Release\foo_uie_dsp_switcher.dll" "%REPO_DIR%"'  # the artifact must reside at the source repo root
   - '7z a -tzip -mx9 "foo_uie_dsp_switcher.fb2k-component" "foo_uie_dsp_switcher.dll"'
-  - 'powershell -Command "& { (Get-FileHash -Algorithm SHA1 "foo_uie_dsp_switcher.fb2k-component").hash; }" > "foo_uie_dsp_switcher.fb2k-component.sha1"'
+  - 'powershell -Command "& { $hash = (Get-FileHash -Algorithm SHA1 "foo_uie_dsp_switcher.fb2k-component").hash.ToString().toLower(); Write-Host $hash " *foo_uie_dsp_switcher.fb2k-component"; }" > "foo_uie_dsp_switcher.fb2k-component.sha1"'
 
 
 #---------------------------------#
