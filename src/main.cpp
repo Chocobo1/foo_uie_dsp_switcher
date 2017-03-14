@@ -441,11 +441,12 @@ void dspConfigCb::on_core_settings_change( const dsp_chain_config & p_newdata )
 	CONST DWORD sleep_ms = 250;
 
 	clear_handle_list();
-	HANDLE *timer_h = nullptr;
+	HANDLE *timer_h = new HANDLE;
 	CONST BOOL ret = CreateTimerQueueTimer( timer_h , NULL , ( WAITORTIMERCALLBACK ) dspConfigCb::dsp_core_change_message , NULL , sleep_ms , 0 , WT_EXECUTEONLYONCE );
 	if( ret == 0 )
 	{
 		console::printf( CONSOLE_HEADER "%s(): CreateTimerQueueTimer() failed" , __FUNCTION__ );
+		delete timer_h;
 		return;
 	}
 	dspConfigCb::h_list.add_item( timer_h );
