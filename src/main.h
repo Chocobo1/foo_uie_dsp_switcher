@@ -105,6 +105,11 @@ static ui_extension::window_factory<dsp_preset_switcher> dsp_preset_switcher_imp
 class dspConfigCb : public dsp_config_callback
 {
 	public:
+	~dspConfigCb()
+	{
+		clear_handle_list();
+	}
+
 	static pfc::list_t<HANDLE*> h_list;
 	virtual void on_core_settings_change( const dsp_chain_config & p_newdata );
 	static VOID CALLBACK dsp_core_change_message( PVOID lpParameter , BOOLEAN TimerOrWaitFired );
