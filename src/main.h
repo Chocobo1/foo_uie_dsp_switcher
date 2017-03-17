@@ -123,6 +123,7 @@ class DspSwitcher : private ui_extension::container_ui_extension
 	LONG m_HEIGHT = 0;
 	int m_minSizeWidth = INT_MAX;
 	int m_fullSizeWidth = 0;
+	int m_extraMargin = 0;
 };
 static ui_extension::window_factory<DspSwitcher> dspSwitcherImpl;
 
