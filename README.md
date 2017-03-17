@@ -1,7 +1,7 @@
 # foo_uie_dsp_switcher [![AppVeyor Build](https://ci.appveyor.com/api/projects/status/github/Chocobo1/foo_uie_dsp_switcher?branch=master&svg=true)](https://ci.appveyor.com/project/Chocobo1/foo-uie-dsp-switcher)
 
 ### Features
-* A dropdown combo box to change DSP presets quickly ![working_screenshot](./pics/working.png)
+* A dropdown combobox for changing DSP presets quickly ![working_screenshot](./pics/working.png)
 
 ### Download
 [Releases page](../../releases)
@@ -10,10 +10,9 @@
 * Install [foo_ui_columns](https://www.foobar2000.org/components/view/foo_ui_columns) plugin
 * To add `foo_uie_dsp_switcher`, right-click in Preferences, ColumnsUI layout: ![add_layout_screenshot](./pics/add_layout.png)
 * Or right-click on menu bar: ![add_menu_screenshot](./pics/add_menu.png)
-* If the list goes wrong after configuring DSP in Preferences, try restarting foobar2000. There is no easy way to retrive DSP preset names in the current foobar2000 SDK.
 
 ### Compiler
-* Visual Studio 2015 Express
+* Visual Studio 2017 Community
 
 ### License
 See [LICENSE](./LICENSE) file

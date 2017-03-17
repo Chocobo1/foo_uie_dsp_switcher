@@ -56,8 +56,7 @@ build_script:
 after_build:
   # prepare for artifacts packaging
   - cd "%REPO_DIR%"
-  - copy "%REPO_DIR%\Release\foo_uie_dsp_switcher.dll" "%REPO_DIR%"
-  - 7z a -tzip -mx9 "foo_uie_dsp_switcher.fb2k-component" "foo_uie_dsp_switcher.dll"
+  - 7z a -tzip -mx9 "foo_uie_dsp_switcher.fb2k-component" "%REPO_DIR%\Release\foo_uie_dsp_switcher.dll"
   - 'powershell -Command "& { $hash = (Get-FileHash -Algorithm SHA1 "foo_uie_dsp_switcher.fb2k-component").hash.ToString().toLower(); Write-Host $hash " *foo_uie_dsp_switcher.fb2k-component"; }" > "foo_uie_dsp_switcher.fb2k-component.sha1"'
 
 

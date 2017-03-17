@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015, Mike Tzou
+Copyright (c) 2017, Mike Tzou
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -32,11 +32,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "main.h"
 
-#define PLUGIN_NAME "DSP Switcher"
-#define PLUGIN_VERSION "1.0.2"
 DECLARE_COMPONENT_VERSION
 (
-	PLUGIN_NAME , PLUGIN_VERSION ,
+	PLUGIN_NAME, PLUGIN_VERSION,
 
 	PLUGIN_NAME"\n"
 	"Compiled on: "__DATE__"\n"
@@ -48,81 +46,117 @@ DECLARE_COMPONENT_VERSION
 );
 
 
-#define WM_USER_DSP_CORE_CHANGE	(WM_USER + 0)
-#define WM_USER_SYNC_CHANGE		(WM_USER + 1)
+#define ARRAY_LENGTH(a) (std::extent<decltype(a)>::value)
+
+#define WM_USER_DSP_CORE_CHANGE (WM_USER + 0)
 
 
-static cfg_int CFG_IDX( { 0xda46969b , 0x448 , 0x474a , { 0x99 , 0x93 , 0x7d , 0x8 , 0xcc , 0xb1 , 0x45 , 0xc7 } } , -1 );
-
-
-void dsp_preset_switcher::initEntries( pfc::list_t<pfc::string8> &out ) const
+void DspSwitcher::initCombobox()
 {
+	// get dsp presets names
+	ItemList list = menuFindCommands();
+	if (m_comboboxEntries == list)
+		return;
+
+	m_comboboxEntries = list;
+
 	// clear existing entries
-	addEntry( "" );  // ensure a 1-item height empty item-list is displayed
-	clearEntires();
+	addToCombobox("");  // ensure a 1-item height empty item-list is displayed
+	clearCombobox();
 
-	// get dsp names
-	out.remove_all();
-	findDspNames( out );
-
-	// add to combo box
-	for( t_size i = 0 , imax = out.get_count(); i < imax ; ++i )
+	for (t_size i = 0, imax = m_comboboxEntries.get_count(); i < imax; ++i)
 	{
-		addEntry( out[i] );
+		addToCombobox(m_comboboxEntries[i].name.c_str());
+
+		if (m_comboboxEntries[i].selected)
+			selectItem(i);
 	}
+
+	// determine width
+	// MSDN Remarks: After an application has finished drawing with the new font object , it should always replace a new font object with the original font object.
+	m_minSizeWidth = INT_MAX;
+	m_fullSizeWidth = 0;
+	CONST HDC dc = ::GetDC(m_combobox);
+	CONST HFONT origFont = SelectFont(dc, m_uiHfont);
+	for (t_size i = 0, imax = m_comboboxEntries.get_count(); i < imax; ++i)
+	{
+		const int cx = ui_helpers::get_text_width(dc, m_comboboxEntries[i].name.c_str(), m_comboboxEntries[i].name.length());
+		m_minSizeWidth = min(m_minSizeWidth, cx);
+		m_fullSizeWidth = max(m_fullSizeWidth, cx);
+	}
+	const int extraMargin = ui_helpers::get_text_width(dc, "0", 1);
+	m_minSizeWidth += (extraMargin * 4);
+	m_fullSizeWidth += extraMargin;
+	SelectFont(dc, origFont);
+	ReleaseDC(m_combobox, dc);
+
+	// get min width
+	COMBOBOXINFO cbi = {0};
+	cbi.cbSize = sizeof(cbi);
+	GetComboBoxInfo(m_combobox, &cbi);
+
+	RECT rcClient;
+	GetClientRect(m_combobox, &rcClient);
+	const long rectMargin = RECT_CX(rcClient) - RECT_CX(cbi.rcItem);;
+	m_minSizeWidth += rectMargin;
+	m_fullSizeWidth += rectMargin;
 
 	return;
 }
 
 
-bool dsp_preset_switcher::addEntry( const char *str ) const
+void DspSwitcher::clearCombobox() const
 {
-	CONST LRESULT ret = uSendMessageText( wnd_my_combo_box , CB_ADDSTRING , NULL , str );
-	if( ret < 0 )
+	CONST LRESULT ret = uSendMessage(m_combobox, CB_RESETCONTENT, 0, 0);
+	if (ret < 0)
+		console::printf(CONSOLE_HEADER "%s() failed", __FUNCTION__);
+}
+
+
+bool DspSwitcher::addToCombobox(const char *str) const
+{
+	CONST LRESULT ret = uSendMessageText(m_combobox, CB_ADDSTRING, NULL, str);
+	if (ret < 0)
 	{
-		console::printf( CONSOLE_HEADER "%s() failed" , __FUNCTION__ );
+		console::printf(CONSOLE_HEADER "%s() failed", __FUNCTION__);
 		return false;
 	}
 	return true;
 }
 
 
-bool dsp_preset_switcher::setEntry( const int idx ) const
+bool DspSwitcher::selectItem(const int idx) const
 {
-	CONST LRESULT ret = uSendMessage( wnd_my_combo_box , CB_SETCURSEL , idx , NULL );
-	if( ret < 0 )
+	CONST LRESULT ret = uSendMessage(m_combobox, CB_SETCURSEL, idx, NULL);
+	if (ret < 0)
 	{
-		console::printf( CONSOLE_HEADER "%s() failed" , __FUNCTION__ );
+		console::printf(CONSOLE_HEADER "%s() failed", __FUNCTION__);
 		return false;
 	}
 	return true;
 }
 
 
-void dsp_preset_switcher::clearEntires() const
+bool DspSwitcher::getSelectItem(DspSwitcher::ComboboxItem &out) const
 {
-	CONST LRESULT ret = uSendMessage( wnd_my_combo_box , CB_RESETCONTENT , 0 , 0 );
-	if( ret < 0 )
+	int idx = uSendMessage(m_combobox, CB_GETCURSEL, 0, 0);
+	if (idx == CB_ERR)
 	{
-		console::printf( CONSOLE_HEADER "%s() failed" , __FUNCTION__ );
-	}
-	return;
-}
-
-
-bool dsp_preset_switcher::getSelection( int &idx_out , pfc::string8 &str_out ) const
-{
-	idx_out = uSendMessage( wnd_my_combo_box , CB_GETCURSEL , 0 , 0 );
-	if( idx_out == CB_ERR )
-	{
-		console::printf( CONSOLE_HEADER "CB_GETCURSEL get CB_ERR" );
+		console::printf(CONSOLE_HEADER "%s() failed", __FUNCTION__);
 		return false;
 	}
 
-	CONST BOOL ret = uComboBox_GetText( wnd_my_combo_box , idx_out , str_out );
-	if( !ret )
+	out = m_comboboxEntries[idx];
+	return true;
+}
+
+
+bool DspSwitcher::setComboboxWidth(const int width) const
+{
+	int idx = uSendMessage(m_combobox, CB_SETDROPPEDWIDTH, width, 0);
+	if (idx == CB_ERR)
 	{
-		console::printf( CONSOLE_HEADER "uComboBox_GetText() failed" );
+		console::printf(CONSOLE_HEADER "%s() failed", __FUNCTION__);
 		return false;
 	}
 
@@ -130,265 +164,259 @@ bool dsp_preset_switcher::getSelection( int &idx_out , pfc::string8 &str_out ) c
 }
 
 
-void dsp_preset_switcher::syncSelection( const int idx ) const
+DspSwitcher::ItemList DspSwitcher::menuFindCommands() const
 {
-	for( t_size i = 0 , imax = dsp_preset_switcher::PARENT_HWND_LIST.get_count(); i < imax ; ++i )
-	{
-		uPostMessage( dsp_preset_switcher::PARENT_HWND_LIST[i] , WM_USER_SYNC_CHANGE , idx , 0 );
-	}
-	return;
-}
+	// dynamic menu item: (Shift + Menu) -> Playback -> DSP settings -> Preferences...
+	const GUID PREFERENCES_GUID = {0xec9d5746, 0xcede, 0x454e, {0x84,0xc4,0xa7,0xad,0xa1,0xc7,0x7f,0x9a}};
 
-
-void dsp_preset_switcher::findDspNames( pfc::list_t<pfc::string8> &out ) const
-{
-	// storing menu handles may not be a good idea, since the user can change DSP preset settings without notify this component
-
-	out.remove_all();
+	ItemList out;
 
 	// enumerate mainmenu items
 	service_enum_t<mainmenu_commands> e;
 	service_ptr_t<mainmenu_commands_v2> ptr;
-	while( e.next( ptr ) )
+	while (e.next(ptr))
 	{
-		for( t_uint32 i = 0 , imax = ptr->get_command_count(); i < imax; ++i )
+		for (t_uint32 i = 0, imax = ptr->get_command_count(); i < imax; ++i)
 		{
-			// lock-on on DSP settings
-			pfc::string8 group_name;
-			ptr->get_name( i , group_name );
-			const char *DSP_PARENT_STR = "DSP";  // partial match, hope to work with non-English locale
-			if( strstr( group_name.toString() , DSP_PARENT_STR ) == nullptr )
-				continue;
-
 			// should be a dynamic item
-			if( !ptr->is_command_dynamic( i ) )
+			if (!ptr->is_command_dynamic(i))
 			{
-				console::printf( CONSOLE_HEADER "%s(): item is NOT dynamic!!" , __FUNCTION__ );
+				//console::printf(CONSOLE_HEADER "%s(): item is NOT dynamic!!", __FUNCTION__);
 				continue;
 			}
-			const mainmenu_node::ptr dsp_group_node = ptr->dynamic_instantiate( i );
+			const mainmenu_node::ptr targetGroupNode = ptr->dynamic_instantiate(i);
 
 			// should be a group node
-			if( dsp_group_node->get_type() != mainmenu_node::type_group )
+			if (targetGroupNode->get_type() != mainmenu_node::type_group)
 			{
-				console::printf( CONSOLE_HEADER "%s(): node is NOT type_group!!" , __FUNCTION__ );
+				//console::printf(CONSOLE_HEADER "%s(): node is NOT type_group!!", __FUNCTION__);
 				continue;
 			}
 
-			// enumerate dsp names
-			for( t_size j = 0 , jmax = dsp_group_node->get_children_count(); ( j < jmax ) && ( jmax > 1 ) ; ++j )  // jmax == 1 when there only exist "Preferences" items
+			// check if this is the right group
+			const t_size childrenCount = targetGroupNode->get_children_count();
+			const GUID lastChildrenGUID = targetGroupNode->get_child(childrenCount - 1)->get_guid();
+			if (lastChildrenGUID != PREFERENCES_GUID)
 			{
-				const mainmenu_node::ptr dsp_item_node = dsp_group_node->get_child( j );
-				if( dsp_item_node->get_type() == mainmenu_node::type_command )
-				{
-					pfc::string8 n;
-					t_uint32 d;
-					dsp_item_node->get_display( n , d );
-					out.add_item( n );
-					//console::printf( CONSOLE_HEADER "%s" , n.toString() );
-				}
-				else if( dsp_item_node->get_type() == mainmenu_node::type_separator )
-				{
-					// stop when encountered type_separator
-					break;
-				}
+				//console::printf(CONSOLE_HEADER "%s(): last child is not our target GUID!!", __FUNCTION__);
+				continue;
 			}
-			return;
+
+			// finally, our targets
+			for (t_size j = 0, jmax = (childrenCount - 1); j < jmax; ++j)  // skip over the last item
+			{
+				const mainmenu_node::ptr itemNode = targetGroupNode->get_child(j);
+				if (itemNode->get_type() != mainmenu_node::type_command)
+					continue;
+
+				pfc::string8 name;
+				t_uint32 flags;
+				itemNode->get_display(name, flags);
+				const bool isSelected = (flags & mainmenu_commands::flag_radiochecked) > 0;
+				out.add_item({name, itemNode->get_guid(), isSelected});
+
+				//console::printf(CONSOLE_HEADER "%s", name.toString());
+			}
+			return out;
 		}
 	}
 
-	return;
+	return out;
 }
 
 
-bool dsp_preset_switcher::selDspName( const int idx , const char *name ) const
+void DspSwitcher::menuExecCommand(const GUID &commandGuid)
 {
-	// notify first
-	syncSelection( idx );
-
-	// find menu item
 	service_enum_t<mainmenu_commands> e;
 	service_ptr_t<mainmenu_commands_v2> ptr;
-	while( e.next( ptr ) )
+	while (e.next(ptr))
 	{
-		for( t_uint32 i = 0 , imax = ptr->get_command_count(); i < imax; ++i )
+		for (t_uint32 i = 0, imax = ptr->get_command_count(); i < imax; ++i)
 		{
-			// lock-on on DSP settings
-			pfc::string8 group_name;
-			ptr->get_name( i , group_name );
-			const char *DSP_PARENT_STR = "DSP";  // partial match, hope to work with non-English locale
-			if( strstr( group_name.toString() , DSP_PARENT_STR ) == nullptr )
-				continue;
-
 			// should be a dynamic item
-			if( !ptr->is_command_dynamic( i ) )
+			if (!ptr->is_command_dynamic(i))
 			{
-				console::printf( CONSOLE_HEADER "%s(): item is NOT dynamic!!" , __FUNCTION__ );
+				//console::printf(CONSOLE_HEADER "%s(): item is NOT dynamic!!", __FUNCTION__);
 				continue;
 			}
-			const mainmenu_node::ptr dsp_group_node = ptr->dynamic_instantiate( i );
+			const mainmenu_node::ptr targetGroupNode = ptr->dynamic_instantiate(i);
 
 			// should be a group node
-			if( dsp_group_node->get_type() != mainmenu_node::type_group )
+			if (targetGroupNode->get_type() != mainmenu_node::type_group)
 			{
-				console::printf( CONSOLE_HEADER "%s(): node is NOT type_group!!" , __FUNCTION__ );
+				//console::printf(CONSOLE_HEADER "%s(): node is NOT type_group!!", __FUNCTION__);
 				continue;
 			}
 
-			// enumerate dsp names
-			for( t_size j = 0 , jmax = dsp_group_node->get_children_count(); ( j < jmax ) && ( jmax > 1 ) ; ++j )  // jmax == 1 when there only exist "Preferences" items
+			// iterate over children
+			for (t_size j = 0, jmax = targetGroupNode->get_children_count(); j < jmax; ++j)
 			{
-				const mainmenu_node::ptr dsp_item_node = dsp_group_node->get_child( j );
-				if( dsp_item_node->get_type() == mainmenu_node::type_command )
-				{
-					pfc::string8 n;
-					t_uint32 d;
-					dsp_item_node->get_display( n , d );
-					if( strncmp( name , n.get_ptr() , strlen( name ) ) == 0 )
-					{
-						// change core settings
-						dsp_item_node->execute( nullptr );
-						return true;
-					}
-				}
+				const mainmenu_node::ptr node = targetGroupNode->get_child(j);
+				if (node->get_guid() != commandGuid)
+					continue;
+
+				node->execute(nullptr);
+				return;
 			}
-			return false;
 		}
 	}
-
-	return false;
 }
 
 
-LRESULT dsp_preset_switcher::on_message( HWND parent_wnd , UINT msg , WPARAM wp , LPARAM lp )
+LRESULT DspSwitcher::on_message(const HWND parentWnd, const UINT msg, const WPARAM wp, const LPARAM lp)
 {
-	switch( msg )
+	switch (msg)
 	{
 		case WM_CREATE:
 		{
-			if( wnd_my_combo_box != NULL )
+			//console::printf(CONSOLE_HEADER "got WM_CREATE");
+
+			if (m_uiHfont != NULL)
 			{
-				console::printf( CONSOLE_HEADER "Error: wnd_my_combo_box != NULL" );
+				console::printf(CONSOLE_HEADER "Error: m_uiHfont != NULL");
 				return -1;
 			}
-			if( ui_hfont != NULL )
+			if (m_combobox != NULL)
 			{
-				console::printf( CONSOLE_HEADER "Error: ui_hfont != NULL" );
+				console::printf(CONSOLE_HEADER "Error: m_combobox != NULL");
+				return -1;
+			}
+			if (m_toolTip != NULL)
+			{
+				console::printf(CONSOLE_HEADER "Error: m_toolTip != NULL");
 				return -1;
 			}
 
 			// get columns UI font
-			ui_hfont = uCreateIconFont();
-			if( ui_hfont == NULL )
+			m_uiHfont = uCreateIconFont();
+			if (m_uiHfont == NULL)
 			{
-				console::printf( CONSOLE_HEADER "uCreateIconFont() failed" );
+				console::printf(CONSOLE_HEADER "uCreateIconFont() failed");
 				return -1;
 			}
 
-			wnd_my_combo_box = CreateWindowEx( 0 , WC_COMBOBOX , nullptr , ( CBS_DROPDOWNLIST | CBS_SORT | WS_CHILD | WS_VISIBLE | WS_TABSTOP ) , 0 , 0 , INIT_WIDTH , CW_USEDEFAULT , parent_wnd , NULL , core_api::get_my_instance() , nullptr );
-			if( wnd_my_combo_box == NULL )
+			m_combobox = ::CreateWindowEx(0, WC_COMBOBOX, nullptr, (CBS_DROPDOWNLIST | WS_CHILD | WS_VISIBLE | WS_TABSTOP), CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, parentWnd, NULL, core_api::get_my_instance(), nullptr);
+			if (m_combobox == NULL)
 			{
-				console::printf( CONSOLE_HEADER "CreateWindowEx() failed" );
+				console::printf(CONSOLE_HEADER "m_combobox = CreateWindowEx() failed");
 
-				DeleteFont( ui_hfont );
-				ui_hfont = NULL;
+				::DeleteFont(m_uiHfont);
+				m_uiHfont = NULL;
 				return -1;
 			}
 
-			dsp_preset_switcher::PARENT_HWND_LIST.remove_item( parent_wnd );
-			dsp_preset_switcher::PARENT_HWND_LIST.add_item( parent_wnd );
+			m_toolTip = CreateWindowEx(0, TOOLTIPS_CLASS, nullptr, (WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP), CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, parentWnd, NULL, core_api::get_my_instance(), nullptr);
+			if (m_toolTip == NULL)
+			{
+				console::printf(CONSOLE_HEADER "m_toolTip = CreateWindowEx() failed");
 
-			// Sends the specified message to a window or windows. The SendMessage function calls the window procedure for the specified window and does not return until the window procedure has processed the message.
-			// Sets the font that a control is to use when drawing text.
-			uSendMessage( wnd_my_combo_box , WM_SETFONT , ( WPARAM ) ui_hfont , MAKELPARAM( 1 , 0 ) );
+				::DeleteFont(m_uiHfont);
+				m_uiHfont = NULL;
+
+				DestroyWindow(m_combobox);
+				m_combobox = NULL;
+				return -1;
+			}
+
+			CONST TOOLINFO toolInfo = {
+				sizeof(toolInfo),
+				TTF_IDISHWND | TTF_SUBCLASS,
+				parentWnd,
+				(UINT_PTR) m_combobox,
+				{},
+				{},
+				LPSTR_TEXTCALLBACK,
+				{},
+				NULL
+			};
+			uSendMessage(m_toolTip, TTM_ADDTOOL, 0, (LPARAM) &toolInfo);  // Associate the tooltip with the tool.
+
+			// Sets the font that a control is to use when drawing text
+			uSendMessage(m_combobox, WM_SETFONT, (WPARAM) m_uiHfont, MAKELPARAM(1, 0));
 
 			// get metrics
 			RECT rc;
-			GetWindowRect( wnd_my_combo_box , &rc );
-			HEIGHT = RECT_CY( rc );
+			GetWindowRect(m_combobox, &rc);
+			m_HEIGHT = RECT_CY(rc);
 
-			// get dsp names and add to combo box
-			pfc::list_t<pfc::string8> l;
-			initEntries( l );
+			++comboboxParents[parentWnd];
 
-			// set initial selection
-			const bool ret = setEntry( CFG_IDX );
-			if( !ret )
-				CFG_IDX = -1;
-
-			// determine width
-			// MSDN Remarks: After an application has finished drawing with the new font object , it should always replace a new font object with the original font object.
-			CONST HDC dc = GetDC( wnd_my_combo_box );
-			CONST HFONT font_old = SelectFont( dc , ui_hfont );
-			for( t_size i = 0 , imax = l.get_count(); i < imax ; ++i )
-			{
-				const char *str = l[i].get_ptr();
-				const int cx = ui_helpers::get_text_width( dc , str , strlen( str ) );
-				min_width = max( min_width , ( t_size ) cx );
-			}
-			SelectFont( dc , font_old );
-			ReleaseDC( parent_wnd , dc );
-
-			// get min width
-			COMBOBOXINFO cbi = { 0 };
-			cbi.cbSize = sizeof( cbi );
-			GetComboBoxInfo( wnd_my_combo_box , &cbi );
-
-			RECT rc_client;
-			GetClientRect( wnd_my_combo_box , &rc_client );
-			min_width += RECT_CX( rc_client ) - RECT_CX( cbi.rcItem );
+			// get ouput names and add to combo box
+			initCombobox();
 
 			return 0;
 		}
 
 		case WM_DESTROY:
 		{
-			dsp_preset_switcher::PARENT_HWND_LIST.remove_item( GetParent( wnd_my_combo_box ) );
-			DestroyWindow( wnd_my_combo_box );
-			wnd_my_combo_box = NULL;
+			//console::printf(CONSOLE_HEADER "got WM_DESTROY");
 
-			DeleteFont( ui_hfont );
-			ui_hfont = NULL;
+			--comboboxParents[parentWnd];
+			if (comboboxParents[parentWnd] == 0)
+				comboboxParents.erase(parentWnd);
+
+			DestroyWindow(m_combobox);
+			m_combobox = NULL;
+
+			DestroyWindow(m_toolTip);
+			m_toolTip = NULL;
+
+			DeleteFont(m_uiHfont);
+			m_uiHfont = NULL;
 
 			return 0;
 		}
 
 		case WM_GETMINMAXINFO:
 		{
-			CONST LPMINMAXINFO ptr = ( LPMINMAXINFO ) lp;
-			ptr->ptMinTrackSize.x = min_width;
+			LPMINMAXINFO ptr = (LPMINMAXINFO) lp;
+			ptr->ptMinTrackSize.x = m_fullSizeWidth;
 
-			ptr->ptMinTrackSize.y = HEIGHT;
-			ptr->ptMaxTrackSize.y = HEIGHT;
+			ptr->ptMinTrackSize.y = m_HEIGHT;
+			ptr->ptMaxTrackSize.y = m_HEIGHT;
 			return 0;
 		}
 
 		case WM_WINDOWPOSCHANGED:
 		{
-			CONST LPWINDOWPOS ptr = ( LPWINDOWPOS ) lp;
-			if( !( ptr->flags & SWP_NOSIZE ) )
-			{
-				SetWindowPos( wnd_my_combo_box , HWND_TOP , 0 , 0 , ptr->cx , HEIGHT , SWP_NOZORDER );
-			}
+			//console::printf(CONSOLE_HEADER "got WM_WINDOWPOSCHANGED");
+
+			LPWINDOWPOS ptr = (LPWINDOWPOS) lp;
+			if (!(ptr->flags & SWP_NOSIZE))
+				SetWindowPos(m_combobox, HWND_TOP, 0, 0, ptr->cx, m_HEIGHT, SWP_NOZORDER);
 
 			return 0;
 		}
 
 		case WM_COMMAND:
 		{
-			if( wp == ( CBN_SELCHANGE << 16 ) )
+			switch (HIWORD(wp))
 			{
-				int idx;
-				pfc::string8 text;
-				bool ret = getSelection( idx , text );
-				if( !ret )
-					break;
+				case CBN_SELCHANGE:
+				{
+					//console::printf(CONSOLE_HEADER "got CBN_SELCHANGE");
 
-				CFG_IDX = idx;
-				ret = selDspName( idx , text.get_ptr() );
-				if( !ret )
-					syncSelection( -1 );
-				return 0;
+					ComboboxItem item;
+					if (!getSelectItem(item))
+						break;
+
+					menuExecCommand(item.guid);
+					return 0;
+				}
+
+				case CBN_DROPDOWN:
+				{
+					//console::printf(CONSOLE_HEADER "got CBN_DROPDOWN");
+
+					initCombobox();
+
+					if (!setComboboxWidth(m_fullSizeWidth))
+						break;
+					return 0;
+				}
+
+				default:
+					break;
 			}
 
 			break;
@@ -396,87 +424,54 @@ LRESULT dsp_preset_switcher::on_message( HWND parent_wnd , UINT msg , WPARAM wp 
 
 		case WM_USER_DSP_CORE_CHANGE:
 		{
-			if( skip_msg )
-			{
-				skip_msg = false;
-				return 0;
-			}
+			//console::printf(CONSOLE_HEADER "got WM_USER_DSP_CORE_CHANGE");
 
-			// just rescan DSP name entries and remove the current selected one
-			pfc::list_t<pfc::string8> d;
-			initEntries( d );
-			CFG_IDX = -1;
+			initCombobox();
 			return 0;
 		}
 
-		case WM_USER_SYNC_CHANGE:
+		case WM_NOTIFY:
 		{
-			if( wp == -1 )
+			switch (((LPNMHDR) lp)->code)
 			{
-				pfc::list_t<pfc::string8> l;
-				initEntries( l );
-				return 0;
+				case TTN_GETDISPINFO:
+				{
+					//console::printf(CONSOLE_HEADER "got TTN_GETDISPINFO");
+
+					ComboboxItem item;
+					if (!getSelectItem(item))
+						break;
+
+					LPNMTTDISPINFO ptr = (LPNMTTDISPINFO) lp;
+					MultiByteToWideChar(CP_UTF8, 0, item.name.c_str(), -1, ptr->szText, ARRAY_LENGTH(ptr->szText) - 1);
+
+					return 0;
+				}
+
+				default:
+					break;
 			}
 
-			skip_msg = true;
-			setEntry( wp );
-			return 0;
+			break;
 		}
 
 		default:
 		{
-			//console::printf( CONSOLE_HEADER "default case: %u" , msg );
+			//console::printf(CONSOLE_HEADER "default case: %u", msg);
 			break;
 		}
 	}
 
-	// Calls the default window procedure to provide default processing for any window messages that an application does not process. 
+	// Calls the default window procedure to provide default processing for any window messages that an application does not process.
 	// This function ensures that every message is processed.
-	return uDefWindowProc( parent_wnd , msg , wp , lp );
+	return uDefWindowProc(parentWnd, msg, wp, lp);
 }
 
 
-void dspConfigCb::on_core_settings_change( const dsp_chain_config & p_newdata )
+void DspConfigWatcher::on_core_settings_change(const dsp_chain_config & /*p_newdata*/)
 {
-	CONST DWORD sleep_ms = 250;
+	//console::printf(CONSOLE_HEADER "comboboxParents.size(): %d", comboboxParents.size());
 
-	clear_handle_list();
-	HANDLE *timer_h = new HANDLE;
-	CONST BOOL ret = CreateTimerQueueTimer( timer_h , NULL , ( WAITORTIMERCALLBACK ) dspConfigCb::dsp_core_change_message , NULL , sleep_ms , 0 , WT_EXECUTEONLYONCE );
-	if( ret == 0 )
-	{
-		console::printf( CONSOLE_HEADER "%s(): CreateTimerQueueTimer() failed" , __FUNCTION__ );
-		delete timer_h;
-		return;
-	}
-	dspConfigCb::h_list.add_item( timer_h );
-	//console::printf( CONSOLE_HEADER "dspConfigCb::h_list.get_count(): %d" , dspConfigCb::h_list.get_count() );
-	return;
-}
-
-
-void dspConfigCb::clear_handle_list() const
-{
-	for( t_size i = 0 , imax = dspConfigCb::h_list.get_count(); i < imax; ++i )
-	{
-		CONST BOOL ret = DeleteTimerQueueTimer( NULL , *dspConfigCb::h_list[i] , NULL );
-		if( ret == 0 )
-		{
-			console::printf( CONSOLE_HEADER "%s(): DeleteTimerQueueTimer() failed" , __FUNCTION__ );
-		}
-		delete dspConfigCb::h_list[i];
-	}
-	dspConfigCb::h_list.remove_all();
-	return;
-}
-
-
-VOID CALLBACK dspConfigCb::dsp_core_change_message( PVOID lpParameter , BOOLEAN TimerOrWaitFired )
-{
-	//console::printf( CONSOLE_HEADER "dsp_preset_switcher::PARENT_HWND_LIST.get_count(): %d" , dsp_preset_switcher::PARENT_HWND_LIST.get_count() );
-	for( t_size i = 0 , imax = dsp_preset_switcher::PARENT_HWND_LIST.get_count(); i < imax ; ++i )
-	{
-		uPostMessage( dsp_preset_switcher::PARENT_HWND_LIST[i] , WM_USER_DSP_CORE_CHANGE , 0 , 0 );  // no point in blocking
-	}
-	return;
+	for (const auto &i : comboboxParents)
+		uPostMessage(i.first, WM_USER_DSP_CORE_CHANGE, 0, 0);  // no point in blocking
 }

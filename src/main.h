@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015, Mike Tzou
+Copyright (c) 2017, Mike Tzou
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30,92 +30,108 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+#include <map>
 
-class dsp_preset_switcher : public ui_extension::container_ui_extension
+#define PLUGIN_NAME "DSP Switcher"
+#define PLUGIN_VERSION "1.1.0"
+
+
+class DspSwitcher : private ui_extension::container_ui_extension
 {
+	private:
+	struct ComboboxItem
+	{
+		pfc::string8 name;
+		GUID guid;
+		bool selected;
+
+		bool operator== (const ComboboxItem &other) const
+		{
+			return ((this->selected == other.selected) && (this->guid == other.guid) && (this->name == other.name));
+		}
+
+		bool operator!= (const ComboboxItem &other) const
+		{
+			return !(*this == other);
+		}
+	};
+
+	typedef pfc::list_t<ComboboxItem> ItemList;
+
+
 	public:
 	// ui_extension::extension_base
-	virtual const GUID & get_extension_guid() const
+	const GUID & get_extension_guid() const override
 	{
-		static const GUID guid = { 0x5eb036ef , 0x9ffd , 0x49ef , { 0xbc , 0xb1 , 0x6a , 0xdc , 0x27 , 0x65 , 0x5 , 0xf2 } };
+		static const GUID guid = {0x5eb036ef, 0x9ffd, 0x49ef, {0xbc, 0xb1, 0x6a, 0xdc, 0x27, 0x65, 0x5, 0xf2}};
 		return guid;
 	}
 
-	virtual void get_name( pfc::string_base & out ) const
+	void get_name(pfc::string_base & out) const override
 	{
-		out = "DSP Switcher";
+		out = PLUGIN_NAME;
 	}
 
 
 	// ui_extension::window
-	virtual void get_category( pfc::string_base & out ) const
+	void get_category(pfc::string_base & out) const override
 	{
 		out = "Toolbars";
 	}
 
-	virtual bool get_description( pfc::string_base & out ) const
+	bool get_description(pfc::string_base & out) const override
 	{
-		out = "An dropdown combo box to change DSP presets quickly";
+		out = "A dropdown combobox for changing DSP presets quickly";
 		return true;
 	};
 
-	virtual unsigned get_type() const
+	unsigned get_type() const override
 	{
 		return ui_extension::window_type_t::type_toolbar;
 	};
 
 
 	// ui_helpers::container_window
-	virtual class_data & get_class_data()const
+	class_data & get_class_data()const override
 	{
-		__implement_get_class_data( class_name , false );
+		static const TCHAR className[] = _T("{5EB036EF-9FFD-49EF-BCB1-6ADC276505F2}");
+		__implement_get_class_data(className, false);
 	}
 
-	virtual LRESULT on_message( HWND wnd , UINT msg , WPARAM wp , LPARAM lp );
-
-
-	static pfc::list_t<HWND>PARENT_HWND_LIST;
+	LRESULT on_message(HWND wnd, UINT msg, WPARAM wp, LPARAM lp) override;
 
 
 	private:
-	void initEntries( pfc::list_t<pfc::string8> &out ) const;
-	bool addEntry( const char *str ) const;
-	bool setEntry( const int idx ) const;
-	void clearEntires() const;
+	void initCombobox();
+	void clearCombobox() const;
+	bool addToCombobox(const char *str) const;
 
-	bool getSelection( int &idx_out , pfc::string8 &str_out ) const;
-	void syncSelection( const int idx ) const;
+	bool selectItem(const int idx) const;
+	bool getSelectItem(ComboboxItem &out) const;
 
-	void findDspNames( pfc::list_t<pfc::string8> &out ) const;
-	bool selDspName( const int idx , const char *name ) const;
+	bool setComboboxWidth(const int width) const;
 
-	const TCHAR *class_name = _T( "{5EB036EF-9FFD-49EF-BCB1-6ADC276505F2}" );
-	HWND wnd_my_combo_box = NULL;
-	HFONT ui_hfont = NULL;
-	bool skip_msg = false;
+	ItemList menuFindCommands() const;
+	static void menuExecCommand(const GUID &commandGuid);
 
-	const int INIT_WIDTH = 300;
-	LONG HEIGHT = 0;
-	t_size min_width = 0;
+	ItemList m_comboboxEntries = {};
+
+	HWND m_combobox = NULL;
+	HWND m_toolTip = NULL;
+	HFONT m_uiHfont = NULL;
+
+	LONG m_HEIGHT = 0;
+	int m_minSizeWidth = INT_MAX;
+	int m_fullSizeWidth = 0;
 };
-pfc::list_t<HWND>dsp_preset_switcher::PARENT_HWND_LIST;
-static ui_extension::window_factory<dsp_preset_switcher> dsp_preset_switcher_impl;
+static ui_extension::window_factory<DspSwitcher> dspSwitcherImpl;
 
 
-class dspConfigCb : public dsp_config_callback
+class DspConfigWatcher : public dsp_config_callback
 {
-	public:
-	~dspConfigCb()
-	{
-		clear_handle_list();
-	}
-
-	static pfc::list_t<HANDLE*> h_list;
-	virtual void on_core_settings_change( const dsp_chain_config & p_newdata );
-	static VOID CALLBACK dsp_core_change_message( PVOID lpParameter , BOOLEAN TimerOrWaitFired );
-
 	private:
-	void clear_handle_list() const;
+	void on_core_settings_change(const dsp_chain_config &p_newdata) override;
 };
-pfc::list_t<HANDLE*> dspConfigCb::h_list;
-static service_factory_single_t<dspConfigCb> dspConfigCb_impl;
+static service_factory_single_t<DspConfigWatcher> dspConfigWatcherImpl;
+
+static std::map<HWND, int> comboboxParents;  // <parent HWND, reference count>
